@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+    "encoding/json"
     "fmt"
+    "io"
+    "io/ioutil"
 	"log"
-	"os"
     "net/http"
+	"os"
 
     "github.com/gorilla/mux"
 
@@ -14,39 +17,64 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
+var MAX_REQUEST_SIZE = 1048576
+var SPOTIFY_ID = "bf253aa4136a4f7f9caa0c9dabfb165c"
+var SPOTIFY_SECRET = "8cbaaea4aaeb451d8f4e3cbf9318e427"
 
-func newRouter() *mux.Router { 
+
+func getRouter() *mux.Router{ 
     r := mux.NewRouter()
-    r.HandleFunc("/hello", handler).Methods("GET")
+    r.HandleFunc("/", home)
+    r.HandleFunc("/search-users", searchUsers)
     return r
 }
 
 func main() {
-    // Declaring a new router
-    r := newRouter()
-
-    fmt.Println("HELLO")
-    r.HandleFunc("/", handler)
-    r.HandleFunc("/playlist-search", handlePlaylistSearch)
-
-    http.ListenAndServe(":8080", nil)
+    router := getRouter()
+    http.Handle("/", router)
+    http.ListenAndServe("127.0.0.1:8080", nil)
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprintf(w, "Hello World!")
+func home(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "HELLO")
 }
 
-func handlePlaylistSearch(w http.ResponseWriter, r *http.Request) {
-    playlistSearch()
+type SearchUsersRequest struct {
+    Username string `json:username`
 }
 
-func playlistSearch() {
+func searchUsers(w http.ResponseWriter, r *http.Request) {
+    reqBody, err := ioutil.ReadAll(io.LimitReader(r.Body, 12039123))
+    if err != nil {
+        fmt.Println("It broke")
+    }
+
+    var searchRequest SearchUsersRequest
+    json.Unmarshal(reqBody, &searchRequest)
+    if err != nil {
+        fmt.Println("Invalid request %+v", reqBody)
+        // TODO: return error code
+        return
+    }
+    username := string(searchRequest.Username)
+    fmt.Printf("Received search user request with username: %s\n", username)
+
+
+    spotifyPlaylistSearch(username)
+    // fmt.Fprintf(w, "%+v", string(reqBody)) 
+    // fmt.Printf("%+v", string(reqBody)) 
+}
+
+func spotifyPlaylistSearch(username string) {
 	ctx := context.Background()
 	config := &clientcredentials.Config{
-		ClientID:     os.Getenv("SPOTIFY_ID"),
-		ClientSecret: os.Getenv("SPOTIFY_SECRET"),
+		// ClientID:     os.Getenv("SPOTIFY_ID"),
+		// ClientSecret: os.Getenv("SPOTIFY_SECRET"),
+        ClientID:     SPOTIFY_ID,
+		ClientSecret: SPOTIFY_SECRET,
 		TokenURL:     spotifyauth.TokenURL,
 	}
+    fmt.Println(os.Getenv("SPOTIFY_ID"), os.Getenv("SPOTIFY_SECRET"))
 	token, err := config.Token(ctx)
 	if err != nil {
 		log.Fatalf("couldn't get token: %v", err)
@@ -54,8 +82,9 @@ func playlistSearch() {
 
 	httpClient := spotifyauth.New().Client(ctx, token)
 	client := spotify.New(httpClient)
+
 	// search for playlists and albums containing "holiday"
-	results, err := client.Search(ctx, "holiday", spotify.SearchTypePlaylist|spotify.SearchTypeAlbum)
+	results, err := client.Search(ctx, username, spotify.SearchTypePlaylist)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,13 +96,14 @@ func playlistSearch() {
 			fmt.Println("   ", item.Name)
 		}
 	}
+
 	// handle playlist results
 	if results.Playlists != nil {
 		fmt.Println("Playlists:")
 		for _, item := range results.Playlists.Playlists {
-			fmt.Println("   ", item.Name)
+			fmt.Println("   ", item.Name, item.Owner)
 		}
 	}
+    // spotify.get(https://api.spotify.com/v1/users/{user_id}/playlists)
 }
-
 
