@@ -125,4 +125,3 @@ func spotifyPlaylistSearch(ctx context.Context, username string) {
 	}
     // spotify.get(https://api.spotify.com/v1/users/{user_id}/playlists)
 }
-
