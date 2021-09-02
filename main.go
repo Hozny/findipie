@@ -33,10 +33,11 @@ func main() {
 		ClientSecret: os.Getenv("SPOTIFY_SECRET"),
 		TokenURL:     spotifyauth.TokenURL,
 	}
-	fmt.Println(os.Getenv("SPOTIFY_ID"), os.Getenv("SPOTIFY_SECRET"))
 	token, err := config.Token(ctx)
 	if err != nil {
 		log.Fatalf("couldn't get token: %v", err)
+		// TODO: handle this error
+		return
 	}
 	httpClient := spotifyauth.New().Client(ctx, token)
 	spotifyClient := spotify.New(httpClient)
@@ -51,8 +52,8 @@ func home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "HELLO")
 }
 
-type SearchUsersRequest struct {
-	Username string `json:"username"`
+type SearchPlaylistRequest struct {
+	PlaylistName string `json:"playlistName"`
 }
 
 type SearchPlaylistResult struct {
@@ -76,17 +77,17 @@ func searchPlaylists(ctx context.Context, spotifyClient *spotify.Client) http.Ha
 			fmt.Println("It broke")
 		}
 
-		var searchRequest SearchUsersRequest
+		var searchRequest SearchPlaylistRequest
 		json.Unmarshal(reqBody, &searchRequest)
 		if err != nil {
 			fmt.Printf("Invalid request %+v", reqBody)
 			// TODO: return error code
 			return
 		}
-		username := string(searchRequest.Username)
-		fmt.Printf("Received search playlist request with playlist name: %s\n", username)
+		playlistName := string(searchRequest.PlaylistName)
+		fmt.Printf("Received search playlist request with playlist name: %s\n", playlistName)
 
-		results, err := spotifyClient.Search(ctx, username, spotify.SearchTypePlaylist)
+		results, err := spotifyClient.Search(ctx, playlistName, spotify.SearchTypePlaylist)
 		if err != nil {
 			log.Fatal(err)
 		}
