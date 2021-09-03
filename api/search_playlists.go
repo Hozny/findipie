@@ -1,4 +1,4 @@
-package SearchPlaylist
+package api
 
 import (
 	"context"

@@ -11,6 +11,8 @@ import (
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 	"golang.org/x/oauth2/clientcredentials"
+
+	"github.com/Hozny/findipie/api"
 )
 
 var MAX_REQUEST_SIZE = 1048576
@@ -18,7 +20,7 @@ var MAX_REQUEST_SIZE = 1048576
 func getRouter(ctx context.Context, spotifyClient *spotify.Client) *mux.Router {
 	r := mux.NewRouter()
 	r.HandleFunc("/", home)
-	r.HandleFunc("/search-playlists", SearchPlaylists(ctx, spotifyClient))
+	r.HandleFunc("/search-playlists", api.SearchPlaylists(ctx, spotifyClient))
 	return r
 }
 
